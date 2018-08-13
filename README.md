@@ -1,4 +1,4 @@
-[![GoDoc](https://godoc.org/github.com/grailbio/go-dicom?status.svg)](https://godoc.org/github.com/grailbio/go-dicom) [![Build Status](https://travis-ci.org/grailbio/go-dicom.svg?branch=master)](https://travis-ci.org/grailbio/go-dicom.svg?branch=master)
+[![GoDoc](https://godoc.org/github.com/hxhxhx88/go-dicom?status.svg)](https://godoc.org/github.com/hxhxhx88/go-dicom) [![Build Status](https://travis-ci.org/grailbio/go-dicom.svg?branch=master)](https://travis-ci.org/grailbio/go-dicom.svg?branch=master)
 
 # DICOM parser in Go
 

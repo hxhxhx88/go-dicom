@@ -69,6 +69,7 @@ var htmlEncodingNames = map[string]string{
 	"ISO 2022 IR 87":  "iso-2022-jp",
 	"GB18030":         "gb18030",
 	"GBK":             "gbk",
+	"ISO_IR 192":      "utf-8",
 }
 
 // ParseSpecificCharacterSet converts DICOM character encoding names, such as

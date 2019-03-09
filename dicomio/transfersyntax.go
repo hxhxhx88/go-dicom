@@ -49,22 +49,22 @@ func CanonicalTransferSyntaxUID(uid string) (string, error) {
 // a transfer syntax. It can be, e.g., 1.2.840.10008.1.2 (it will return
 // LittleEndian, ImplicitVR) or 1.2.840.10008.1.2.4.54 (it will return
 // (LittleEndian, ExplicitVR).
-func ParseTransferSyntaxUID(uid string) (bo binary.ByteOrder, implicit IsImplicitVR, err error) {
+func ParseTransferSyntaxUID(uid string) (bo binary.ByteOrder, implicit IsImplicitVR, deflated bool, err error) {
 	canonical, err := CanonicalTransferSyntaxUID(uid)
 	if err != nil {
-		return nil, UnknownVR, err
+		return nil, UnknownVR, false, err
 	}
 	switch canonical {
 	case dicomuid.ImplicitVRLittleEndian:
-		return binary.LittleEndian, ImplicitVR, nil
+		return binary.LittleEndian, ImplicitVR, false, nil
 	case dicomuid.DeflatedExplicitVRLittleEndian:
-		fallthrough
+		return binary.LittleEndian, ExplicitVR, true, nil
 	case dicomuid.ExplicitVRLittleEndian:
-		return binary.LittleEndian, ExplicitVR, nil
+		return binary.LittleEndian, ExplicitVR, false, nil
 	case dicomuid.ExplicitVRBigEndian:
-		return binary.BigEndian, ExplicitVR, nil
+		return binary.BigEndian, ExplicitVR, false, nil
 	default:
 		panic(fmt.Sprintf("Invalid transfer syntax: %v,  %v", canonical, uid))
-		return binary.BigEndian, ExplicitVR, nil
+		return binary.BigEndian, ExplicitVR, false, nil
 	}
 }

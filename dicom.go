@@ -2,9 +2,11 @@ package dicom
 
 import (
 	"bytes"
+	"compress/flate"
 	"encoding/binary"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 
 	"github.com/hxhxhx88/go-dicom/dicomio"
@@ -85,8 +87,8 @@ func ReadDataSetFromFile(path string, options ReadOptions) (*DataSet, error) {
 // On parse error, this function may return a non-nil dataset and a non-nil
 // error. In such case, the dataset will contain parts of the file that are
 // parsable, and error will show the first error found by the parser.
-func ReadDataSet(in io.Reader, bytes int64, options ReadOptions) (*DataSet, error) {
-	buffer := dicomio.NewDecoder(in, bytes, binary.LittleEndian, dicomio.ExplicitVR)
+func ReadDataSet(in io.Reader, limit int64, options ReadOptions) (*DataSet, error) {
+	buffer := dicomio.NewDecoder(in, limit, binary.LittleEndian, dicomio.ExplicitVR)
 	metaElems := ParseFileHeader(buffer)
 	if buffer.Error() != nil {
 		return nil, buffer.Error()
@@ -94,12 +96,26 @@ func ReadDataSet(in io.Reader, bytes int64, options ReadOptions) (*DataSet, erro
 	file := &DataSet{Elements: metaElems}
 
 	// Change the transfer syntax for the rest of the file.
-	endian, implicit, err := getTransferSyntax(file)
+	endian, implicit, deflated, err := getTransferSyntax(file)
 	if err != nil {
 		return nil, err
 	}
 	buffer.PushTransferSyntax(endian, implicit)
 	defer buffer.PopTransferSyntax()
+
+	if deflated {
+		// the buffer after file header must be inflated before processing
+		inflated, err := ioutil.ReadAll(flate.NewReader(buffer))
+		if err != nil {
+			return nil, err
+		}
+		buffer = dicomio.NewDecoder(
+			bytes.NewBuffer(inflated),
+			int64(len(inflated)),
+			endian,
+			implicit,
+		)
+	}
 
 	// Read the list of elements.
 	for buffer.Len() > 0 {
@@ -145,14 +161,14 @@ func ReadDataSet(in io.Reader, bytes int64, options ReadOptions) (*DataSet, erro
 	return file, buffer.Error()
 }
 
-func getTransferSyntax(ds *DataSet) (bo binary.ByteOrder, implicit dicomio.IsImplicitVR, err error) {
+func getTransferSyntax(ds *DataSet) (bo binary.ByteOrder, implicit dicomio.IsImplicitVR, deflated bool, err error) {
 	elem, err := ds.FindElementByTag(dicomtag.TransferSyntaxUID)
 	if err != nil {
-		return nil, dicomio.UnknownVR, err
+		return nil, dicomio.UnknownVR, false, err
 	}
 	transferSyntaxUID, err := elem.GetString()
 	if err != nil {
-		return nil, dicomio.UnknownVR, err
+		return nil, dicomio.UnknownVR, false, err
 	}
 	return dicomio.ParseTransferSyntaxUID(transferSyntaxUID)
 }

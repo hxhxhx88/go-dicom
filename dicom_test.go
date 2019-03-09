@@ -1,6 +1,7 @@
 package dicom_test
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"testing"
@@ -135,5 +136,36 @@ func TestReadOptions(t *testing.T) {
 func BenchmarkParseSingle(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_ = mustReadFile("examples/IM-0001-0001.dcm", dicom.ReadOptions{})
+	}
+}
+
+func TestDeflate(t *testing.T) {
+	for _, tc := range []string{"image", "report", "wave"} {
+		testDeflate(t, tc)
+	}
+
+}
+
+func testDeflate(t *testing.T, name string) {
+	original := mustReadFile(fmt.Sprintf("examples/deflate/%s", name), dicom.ReadOptions{})
+	deflated := mustReadFile(fmt.Sprintf("examples/deflate/%s_dfl", name), dicom.ReadOptions{})
+
+	for _, e1 := range original.Elements {
+		if e1.Tag.Group == 2 {
+			// don't compare header element, which may differ
+			continue
+		}
+		e2, err := deflated.FindElementByTag(e1.Tag)
+		require.NoError(t, err)
+
+		if e1.UndefinedLength != e2.UndefinedLength {
+			// the inflated elments somehow always have `UndefinedLength` being true,
+			//  even the original image may have it false
+			// this, we avoid comparing it directly, but its value.
+			require.Equal(t, e1.Value, e2.Value)
+			return
+		}
+
+		require.Equal(t, e1, e2)
 	}
 }

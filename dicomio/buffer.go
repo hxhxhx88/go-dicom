@@ -55,7 +55,7 @@ func NewBytesEncoder(bo binary.ByteOrder, implicit IsImplicitVR) *Encoder {
 // NewBytesEncoderWithTransferSyntax is similar to NewBytesEncoder, but it takes
 // a transfersyntaxuid.
 func NewBytesEncoderWithTransferSyntax(transferSyntaxUID string) *Encoder {
-	endian, implicit, err := ParseTransferSyntaxUID(transferSyntaxUID)
+	endian, implicit, _, err := ParseTransferSyntaxUID(transferSyntaxUID)
 	if err == nil {
 		return NewBytesEncoder(endian, implicit)
 	}
@@ -67,7 +67,7 @@ func NewBytesEncoderWithTransferSyntax(transferSyntaxUID string) *Encoder {
 // NewEncoderWithTransferSyntax is similar to NewEncoder, but it takes a
 // transfersyntaxuid.
 func NewEncoderWithTransferSyntax(out io.Writer, transferSyntaxUID string) *Encoder {
-	endian, implicit, err := ParseTransferSyntaxUID(transferSyntaxUID)
+	endian, implicit, _, err := ParseTransferSyntaxUID(transferSyntaxUID)
 	if err == nil {
 		return NewEncoder(out, endian, implicit)
 	}
@@ -256,7 +256,7 @@ func NewBytesDecoder(data []byte, bo binary.ByteOrder, implicit IsImplicitVR) *D
 // NewBytesDecoderWithTransferSyntax is similar to NewBytesDecoder, but it takes
 // a transfer syntax UID instead of a <byteorder, IsImplicitVR> pair.
 func NewBytesDecoderWithTransferSyntax(data []byte, transferSyntaxUID string) *Decoder {
-	endian, implicit, err := ParseTransferSyntaxUID(transferSyntaxUID)
+	endian, implicit, _, err := ParseTransferSyntaxUID(transferSyntaxUID)
 	if err == nil {
 		return NewBytesDecoder(data, endian, implicit)
 	}
@@ -298,7 +298,7 @@ func (d *Decoder) PushTransferSyntax(bo binary.ByteOrder, implicit IsImplicitVR)
 // PushTransferSyntaxByUID is similar to PushTransferSyntax, but it takes a
 // transfer syntax UID.
 func (d *Decoder) PushTransferSyntaxByUID(uid string) {
-	endian, implicit, err := ParseTransferSyntaxUID(uid)
+	endian, implicit, _, err := ParseTransferSyntaxUID(uid)
 	if err != nil {
 		d.SetError(err)
 	}

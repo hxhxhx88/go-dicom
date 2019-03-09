@@ -369,7 +369,7 @@ func WriteDataSet(out io.Writer, ds *DataSet) error {
 	if e.Error() != nil {
 		return e.Error()
 	}
-	endian, implicit, err := getTransferSyntax(ds)
+	endian, implicit, _, err := getTransferSyntax(ds)
 	if err != nil {
 		return err
 	}

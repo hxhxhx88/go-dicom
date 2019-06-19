@@ -11,6 +11,7 @@ import (
 
 	"github.com/hxhxhx88/go-dicom/dicomio"
 	"github.com/hxhxhx88/go-dicom/dicomtag"
+	"github.com/hxhxhx88/go-dicom/dicomuid"
 )
 
 // GoDICOMImplementationClassUIDPrefix defines the UID prefix for
@@ -60,7 +61,7 @@ type ReadOptions struct {
 // error. In such case, the dataset will contain parts of the file that are
 // parsable, and error will show the first error found by the parser.
 func ReadDataSetInBytes(data []byte, options ReadOptions) (*DataSet, error) {
-	return ReadDataSet(bytes.NewBuffer(data), int64(len(data)), options)
+	return ReadDataSet(bytes.NewReader(data), int64(len(data)), options)
 }
 
 // ReadDataSetFromFile parses file cotents into dicom.DataSet. It is a thin
@@ -87,18 +88,30 @@ func ReadDataSetFromFile(path string, options ReadOptions) (*DataSet, error) {
 // On parse error, this function may return a non-nil dataset and a non-nil
 // error. In such case, the dataset will contain parts of the file that are
 // parsable, and error will show the first error found by the parser.
-func ReadDataSet(in io.Reader, limit int64, options ReadOptions) (*DataSet, error) {
+func ReadDataSet(in io.ReadSeeker, limit int64, options ReadOptions) (*DataSet, error) {
 	buffer := dicomio.NewDecoder(in, limit, binary.LittleEndian, dicomio.ExplicitVR)
 	metaElems := ParseFileHeader(buffer)
+
+	// An error in parsing the file header may indicates that this file is not in strictly correct format.
+	// Typically, the whole header is missing.
+	// We ignore the header and move on.
 	if buffer.Error() != nil {
-		return nil, buffer.Error()
+		if err := buffer.Seek(0); err != nil {
+			return nil, err
+		}
+		buffer.ClearError()
 	}
+
+	// Upon failed to read haeder, `metaElems` is empty, which is fine.
 	file := &DataSet{Elements: metaElems}
 
 	// Change the transfer syntax for the rest of the file.
 	endian, implicit, deflated, err := getTransferSyntax(file)
 	if err != nil {
-		return nil, err
+		// according to standard, https://www.dicomlibrary.com/dicom/transfer-syntax/
+		//   ImplicitVRLittleEndian is the default.
+		// We use it to continue decoding.
+		endian, implicit, deflated, _ = dicomio.ParseTransferSyntaxUID(dicomuid.ImplicitVRLittleEndian)
 	}
 	buffer.PushTransferSyntax(endian, implicit)
 	defer buffer.PopTransferSyntax()
@@ -110,7 +123,7 @@ func ReadDataSet(in io.Reader, limit int64, options ReadOptions) (*DataSet, erro
 			return nil, err
 		}
 		buffer = dicomio.NewDecoder(
-			bytes.NewBuffer(inflated),
+			bytes.NewReader(inflated),
 			int64(len(inflated)),
 			endian,
 			implicit,

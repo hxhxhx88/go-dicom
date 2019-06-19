@@ -207,7 +207,7 @@ const (
 
 // Decoder is a helper class for decoder low-level DICOM data types.
 type Decoder struct {
-	in  io.Reader
+	in  io.ReadSeeker
 	err error
 	bo  binary.ByteOrder
 	// "implicit" isn't used by Decoder internally. It's there for the user
@@ -233,7 +233,7 @@ type Decoder struct {
 // Don't pass just an arbitrary large number as the "limit". The underlying code
 // assumes that "limit" accurately bounds the end of the data.
 func NewDecoder(
-	in io.Reader,
+	in io.ReadSeeker,
 	limit int64,
 	bo binary.ByteOrder,
 	implicit IsImplicitVR) *Decoder {
@@ -250,7 +250,7 @@ func NewDecoder(
 // NewBytesDecoder creates a decoder that reads from a sequence of bytes. See
 // NewDecoder() for explanation of other parameters.
 func NewBytesDecoder(data []byte, bo binary.ByteOrder, implicit IsImplicitVR) *Decoder {
-	return NewDecoder(bytes.NewBuffer(data), int64(len(data)), bo, implicit)
+	return NewDecoder(bytes.NewReader(data), int64(len(data)), bo, implicit)
 }
 
 // NewBytesDecoderWithTransferSyntax is similar to NewBytesDecoder, but it takes
@@ -280,6 +280,11 @@ func (d *Decoder) SetError(err error) {
 // SetErrorf is similar to SetError, but takes a printf format string.
 func (d *Decoder) SetErrorf(format string, args ...interface{}) {
 	d.SetError(fmt.Errorf(format, args...))
+}
+
+// ClearError clears error of the decoder
+func (d *Decoder) ClearError() {
+	d.err = nil
 }
 
 // TransferSyntax returns the current transfer syntax.
@@ -538,4 +543,13 @@ func (d *Decoder) Skip(length int) {
 		remaining -= n
 	}
 	doassert(d.err != nil || remaining == 0)
+}
+
+// Seek moves the read pointer to specific position.
+func (d *Decoder) Seek(offset int64) (err error) {
+	_, err = d.in.Seek(offset, io.SeekStart)
+	if err == nil {
+		d.pos = 0
+	}
+	return
 }

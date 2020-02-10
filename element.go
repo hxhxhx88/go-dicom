@@ -6,9 +6,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 
+	"github.com/golang/glog"
 	"github.com/hxhxhx88/go-dicom/dicomio"
 	"github.com/hxhxhx88/go-dicom/dicomlog"
 	"github.com/hxhxhx88/go-dicom/dicomtag"
@@ -693,7 +693,7 @@ func readImplicit(buffer *dicomio.Decoder, tag dicomtag.Tag) (string, uint32) {
 
 	vl := buffer.ReadUInt32()
 	if vl != undefinedLength && vl%2 != 0 {
-		log.Printf("Encountered odd length (vl=%v) when reading explicit VR %v for tag %s", vl, vr, dicomtag.DebugString(tag))
+		glog.V(2).Infof("Encountered odd length (vl=%v) when reading explicit VR %v for tag %s", vl, vr, dicomtag.DebugString(tag))
 		// buffer.SetErrorf("Encountered odd length (vl=%v) when reading implicit VR '%v' for tag %s", vl, vr, dicomtag.DebugString(tag))
 		// vl = 0
 	}
@@ -725,7 +725,7 @@ func readExplicit(buffer *dicomio.Decoder, tag dicomtag.Tag) (string, uint32) {
 		}
 	}
 	if vl != undefinedLength && vl%2 != 0 {
-		log.Printf("Encountered odd length (vl=%v) when reading explicit VR %v for tag %s", vl, vr, dicomtag.DebugString(tag))
+		glog.V(2).Infof("Encountered odd length (vl=%v) when reading explicit VR %v for tag %s", vl, vr, dicomtag.DebugString(tag))
 		// buffer.SetErrorf("Encountered odd length (vl=%v) when reading explicit VR %v for tag %s", vl, vr, dicomtag.DebugString(tag))
 		// vl = 0
 	}

@@ -109,12 +109,22 @@ func writeBasicOffsetTable(e *dicomio.Encoder, offsets []uint32) {
 	writeRawItem(e, subEncoder.Bytes())
 }
 
+func WriteElement(e *dicomio.Encoder, elem *Element) {
+	WriteElementWithOption(e, elem, WriteOption{
+		SkipVerifyingVR: false,
+	})
+}
+
+type WriteOption struct {
+	SkipVerifyingVR bool
+}
+
 // WriteElement encodes one data element.  Errors are reported through e.Error()
 // and/or E.Finish().
 //
 // REQUIRES: Each value in values[] must match the VR of the tag. E.g., if tag
 // is for UL, then each value must be uint32.
-func WriteElement(e *dicomio.Encoder, elem *Element) {
+func WriteElementWithOption(e *dicomio.Encoder, elem *Element, opt WriteOption) {
 	vr := elem.VR
 	entry, err := dicomtag.Find(elem.Tag)
 	if vr == "" {
@@ -125,14 +135,12 @@ func WriteElement(e *dicomio.Encoder, elem *Element) {
 		}
 	} else {
 		if err == nil && entry.VR != vr {
-			if dicomtag.GetVRKind(elem.Tag, entry.VR) != dicomtag.GetVRKind(elem.Tag, vr) {
+			if !opt.SkipVerifyingVR && dicomtag.GetVRKind(elem.Tag, entry.VR) != dicomtag.GetVRKind(elem.Tag, vr) {
 				// The golang repl. is different. We can't continue.
-				e.SetErrorf("dicom.WriteElement: VR value mismatch for tag %s. Element.VR=%v, but DICOM standard defines VR to be %v",
-					dicomtag.DebugString(elem.Tag), vr, entry.VR)
+				e.SetErrorf("dicom.WriteElement: VR value mismatch for tag %s. Element.VR=%v, but DICOM standard defines VR to be %v", dicomtag.DebugString(elem.Tag), vr, entry.VR)
 				return
 			}
-			dicomlog.Vprintf(1, "dicom.WriteElement: VR value mismatch for tag %s. Element.VR=%v, but DICOM standard defines VR to be %v (continuing)",
-				dicomtag.DebugString(elem.Tag), vr, entry.VR)
+			dicomlog.Vprintf(1, "dicom.WriteElement: VR value mismatch for tag %s. Element.VR=%v, but DICOM standard defines VR to be %v (continuing)", dicomtag.DebugString(elem.Tag), vr, entry.VR)
 		}
 	}
 	doassert(vr != "", vr)
@@ -347,6 +355,12 @@ func WriteElement(e *dicomio.Encoder, elem *Element) {
 	}
 }
 
+func WriteDataSet(out io.Writer, ds *DataSet) error {
+	return WriteDataSetWithOption(out, ds, WriteOption{
+		SkipVerifyingVR: false,
+	})
+}
+
 // WriteDataSet writes the dataset into the stream in DICOM file format,
 // complete with the magic header and metadata elements.
 //
@@ -357,7 +371,7 @@ func WriteElement(e *dicomio.Encoder, elem *Element) {
 //  ds := ... read or create dicom.Dataset ...
 //  out, err := os.Create("test.dcm")
 //  err := dicom.Write(out, ds)
-func WriteDataSet(out io.Writer, ds *DataSet) error {
+func WriteDataSetWithOption(out io.Writer, ds *DataSet, opt WriteOption) error {
 	e := dicomio.NewEncoder(out, nil, dicomio.UnknownVR)
 	var metaElems []*Element
 	for _, elem := range ds.Elements {
@@ -376,7 +390,7 @@ func WriteDataSet(out io.Writer, ds *DataSet) error {
 	e.PushTransferSyntax(endian, implicit)
 	for _, elem := range ds.Elements {
 		if elem.Tag.Group != dicomtag.MetadataGroup {
-			WriteElement(e, elem)
+			WriteElementWithOption(e, elem, opt)
 		}
 	}
 	e.PopTransferSyntax()

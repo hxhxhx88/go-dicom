@@ -11,6 +11,12 @@ import (
 	"github.com/hxhxhx88/go-dicom/dicomtag"
 )
 
+func WriteFileHeader(e *dicomio.Encoder, metaElems []*Element) {
+	WriteFileHeaderWithOption(e, metaElems, WriteOption{
+		SkipVerifyingVR: false,
+	})
+}
+
 // WriteFileHeader produces a DICOM file header. metaElems[] is be a list of
 // elements to be embedded in the header part.  Every element in metaElems[]
 // must have Tag.Group==2. It must contain at least the following three
@@ -23,7 +29,7 @@ import (
 // Consult the following page for the DICOM file header format.
 //
 // http://dicom.nema.org/dicom/2013/output/chtml/part10/chapter_7.html
-func WriteFileHeader(e *dicomio.Encoder, metaElems []*Element) {
+func WriteFileHeaderWithOption(e *dicomio.Encoder, metaElems []*Element, opt WriteOption) {
 	e.PushTransferSyntax(binary.LittleEndian, dicomio.ExplicitVR)
 	defer e.PopTransferSyntax()
 
@@ -32,7 +38,7 @@ func WriteFileHeader(e *dicomio.Encoder, metaElems []*Element) {
 	tagsUsed[dicomtag.FileMetaInformationGroupLength] = true
 	writeRequiredMetaElem := func(tag dicomtag.Tag) {
 		if elem, err := FindElementByTag(metaElems, tag); err == nil {
-			WriteElement(subEncoder, elem)
+			WriteElementWithOption(subEncoder, elem, opt)
 		} else {
 			subEncoder.SetErrorf("%v not found in metaelems: %v", dicomtag.DebugString(tag), err)
 		}
@@ -40,9 +46,9 @@ func WriteFileHeader(e *dicomio.Encoder, metaElems []*Element) {
 	}
 	writeOptionalMetaElem := func(tag dicomtag.Tag, defaultValue interface{}) {
 		if elem, err := FindElementByTag(metaElems, tag); err == nil {
-			WriteElement(subEncoder, elem)
+			WriteElementWithOption(subEncoder, elem, opt)
 		} else {
-			WriteElement(subEncoder, MustNewElement(tag, defaultValue))
+			WriteElementWithOption(subEncoder, MustNewElement(tag, defaultValue), opt)
 		}
 		tagsUsed[tag] = true
 	}
@@ -55,7 +61,7 @@ func WriteFileHeader(e *dicomio.Encoder, metaElems []*Element) {
 	for _, elem := range metaElems {
 		if elem.Tag.Group == dicomtag.MetadataGroup {
 			if _, ok := tagsUsed[elem.Tag]; !ok {
-				WriteElement(subEncoder, elem)
+				WriteElementWithOption(subEncoder, elem, opt)
 			}
 		}
 	}
@@ -66,7 +72,7 @@ func WriteFileHeader(e *dicomio.Encoder, metaElems []*Element) {
 	metaBytes := subEncoder.Bytes()
 	e.WriteZeros(128)
 	e.WriteString("DICM")
-	WriteElement(e, MustNewElement(dicomtag.FileMetaInformationGroupLength, uint32(len(metaBytes))))
+	WriteElementWithOption(e, MustNewElement(dicomtag.FileMetaInformationGroupLength, uint32(len(metaBytes))), opt)
 	e.WriteBytes(metaBytes)
 }
 
@@ -176,7 +182,7 @@ func WriteElementWithOption(e *dicomio.Encoder, elem *Element, opt WriteOption) 
 					e.SetError(fmt.Errorf("SQ element must be an Item, but found %v", value))
 					return
 				}
-				WriteElement(e, subelem)
+				WriteElementWithOption(e, subelem, opt)
 			}
 			encodeElementHeader(e, dicomtag.SequenceDelimitationItem, "" /*not used*/, 0)
 		} else {
@@ -187,7 +193,7 @@ func WriteElementWithOption(e *dicomio.Encoder, elem *Element, opt WriteOption) 
 					e.SetErrorf("SQ element must be an Item, but found %v", value)
 					return
 				}
-				WriteElement(sube, subelem)
+				WriteElementWithOption(sube, subelem, opt)
 			}
 			if sube.Error() != nil {
 				e.SetError(sube.Error())
@@ -206,7 +212,7 @@ func WriteElementWithOption(e *dicomio.Encoder, elem *Element, opt WriteOption) 
 					e.SetErrorf("Item values must be a dicom.Element, but found %v", value)
 					return
 				}
-				WriteElement(e, subelem)
+				WriteElementWithOption(e, subelem, opt)
 			}
 			encodeElementHeader(e, dicomtag.ItemDelimitationItem, "" /*not used*/, 0)
 		} else {
@@ -217,7 +223,7 @@ func WriteElementWithOption(e *dicomio.Encoder, elem *Element, opt WriteOption) 
 					e.SetErrorf("Item values must be a dicom.Element, but found %v", value)
 					return
 				}
-				WriteElement(sube, subelem)
+				WriteElementWithOption(sube, subelem, opt)
 			}
 			if sube.Error() != nil {
 				e.SetError(sube.Error())
@@ -379,7 +385,7 @@ func WriteDataSetWithOption(out io.Writer, ds *DataSet, opt WriteOption) error {
 			metaElems = append(metaElems, elem)
 		}
 	}
-	WriteFileHeader(e, metaElems)
+	WriteFileHeaderWithOption(e, metaElems, opt)
 	if e.Error() != nil {
 		return e.Error()
 	}

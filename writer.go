@@ -350,14 +350,24 @@ func WriteElementWithOption(e *dicomio.Encoder, elem *Element, opt WriteOption) 
 					sube.WriteByte(0)
 				}
 			}
-		case "AT", "NA":
+		case "AT":
+			for _, value := range elem.Value {
+				tag, ok := value.(dicomtag.Tag)
+				if !ok {
+					e.SetErrorf("%v: Non-tag value [%v] found", dicomtag.DebugString(elem.Tag), value)
+					continue
+				}
+				sube.WriteUInt16(tag.Group)
+				sube.WriteUInt16(tag.Element)
+			}
+		case "NA":
 			fallthrough
 		default:
 			s := ""
 			for i, value := range elem.Value {
 				substr, ok := value.(string)
 				if !ok {
-					e.SetErrorf("%v: Non-string value found", dicomtag.DebugString(elem.Tag))
+					e.SetErrorf("%v: Non-string value [%v] found", dicomtag.DebugString(elem.Tag), value)
 					continue
 				}
 				if i > 0 {

@@ -53,9 +53,25 @@ func WriteFileHeaderWithOption(e *dicomio.Encoder, metaElems []*Element, opt Wri
 		tagsUsed[tag] = true
 	}
 	writeOptionalMetaElem(dicomtag.FileMetaInformationVersion, []byte("0 1"))
-	writeRequiredMetaElem(dicomtag.MediaStorageSOPClassUID)
-	writeRequiredMetaElem(dicomtag.MediaStorageSOPInstanceUID)
-	writeRequiredMetaElem(dicomtag.TransferSyntaxUID)
+
+	if opt.DefaultMediaStorageSOPClassUID == "" {
+		writeRequiredMetaElem(dicomtag.MediaStorageSOPClassUID)
+	} else {
+		writeOptionalMetaElem(dicomtag.MediaStorageSOPClassUID, opt.DefaultMediaStorageSOPClassUID)
+	}
+
+	if opt.DefaultMediaStorageSOPInstanceUID == "" {
+		writeRequiredMetaElem(dicomtag.MediaStorageSOPInstanceUID)
+	} else {
+		writeOptionalMetaElem(dicomtag.MediaStorageSOPInstanceUID, opt.DefaultMediaStorageSOPInstanceUID)
+	}
+
+	if opt.DefaultTransferSyntaxUID == "" {
+		writeRequiredMetaElem(dicomtag.TransferSyntaxUID)
+	} else {
+		writeOptionalMetaElem(dicomtag.TransferSyntaxUID, opt.DefaultTransferSyntaxUID)
+	}
+
 	writeOptionalMetaElem(dicomtag.ImplementationClassUID, GoDICOMImplementationClassUID)
 	writeOptionalMetaElem(dicomtag.ImplementationVersionName, GoDICOMImplementationVersionName)
 	for _, elem := range metaElems {
@@ -122,7 +138,10 @@ func WriteElement(e *dicomio.Encoder, elem *Element) {
 }
 
 type WriteOption struct {
-	SkipVerifyingVR bool
+	SkipVerifyingVR                   bool
+	DefaultMediaStorageSOPClassUID    string
+	DefaultMediaStorageSOPInstanceUID string
+	DefaultTransferSyntaxUID          string
 }
 
 // WriteElement encodes one data element.  Errors are reported through e.Error()

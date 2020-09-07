@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/hxhxhx88/go-dicom/dicomio"
 	"github.com/hxhxhx88/go-dicom/dicomlog"
@@ -418,9 +419,18 @@ func WriteDataSetWithOption(out io.Writer, ds *DataSet, opt WriteOption) error {
 	if e.Error() != nil {
 		return e.Error()
 	}
+
 	endian, implicit, _, err := getTransferSyntax(ds)
 	if err != nil {
-		return err
+		if strings.Contains(err.Error(), "element not found") && opt.DefaultTransferSyntaxUID != "" {
+			// use default transfer syntax uid
+			endian, implicit, _, err = dicomio.ParseTransferSyntaxUID(opt.DefaultTransferSyntaxUID)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
 	}
 	e.PushTransferSyntax(endian, implicit)
 	for _, elem := range ds.Elements {

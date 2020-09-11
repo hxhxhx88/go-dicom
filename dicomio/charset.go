@@ -70,6 +70,10 @@ var htmlEncodingNames = map[string]string{
 	"GB18030":         "gb18030",
 	"GBK":             "gbk",
 	"ISO_IR 192":      "utf-8",
+
+	// encoding `ISO 2022 IR 58` is suggested to map to `ISO-2022-CN`
+	// http://dicom.nema.org/medical/dicom/current/output/chtml/part18/chapter_D.html
+	"ISO 2022 IR 58": "iso-2022-cn",
 }
 
 // ParseSpecificCharacterSet converts DICOM character encoding names, such as
@@ -92,7 +96,7 @@ func ParseSpecificCharacterSet(encodingNames []string) (CodingSystem, error) {
 		dicomlog.Vprintf(2, "dicom.ParseSpecificCharacterSet: Using coding system %s", name)
 		if htmlName, ok := htmlEncodingNames[name]; !ok {
 			// TODO(saito) Support more encodings.
-			return CodingSystem{}, fmt.Errorf("dicom.ParseSpecificCharacterSet: Unknown character set '%s'. Assuming utf-8", encodingNames[0])
+			return CodingSystem{}, fmt.Errorf("dicom.ParseSpecificCharacterSet: Unknown character set '%s'. Assuming utf-8", name)
 		} else {
 			if htmlName != "" {
 				d, err := htmlindex.Get(htmlName)

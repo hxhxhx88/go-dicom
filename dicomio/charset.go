@@ -71,9 +71,30 @@ var htmlEncodingNames = map[string]string{
 	"GBK":             "gbk",
 	"ISO_IR 192":      "utf-8",
 
-	// encoding `ISO 2022 IR 58` is suggested to map to `ISO-2022-CN`
-	// http://dicom.nema.org/medical/dicom/current/output/chtml/part18/chapter_D.html
-	"ISO 2022 IR 58": "iso-2022-cn",
+	// Encoding `ISO 2022 IR 58` is suggested to map to `ISO-2022-CN` at
+	// 	 http://dicom.nema.org/medical/dicom/current/output/chtml/part18/chapter_D.html
+	// However, `ISO-2022-CN` encoding is a deprecated encoding for HTML client, see
+	//   https://developer.mozilla.org/en-US/docs/Web/API/TextDecoder/TextDecoder
+	//   https://developer.mozilla.org/en-US/docs/Web/API/TextDecoder/encoding
+	// and I quote from https://en.wikipedia.org/wiki/ISO/IEC_2022#Other_7-bit_versions
+	//   ```
+	//   ISO-2022-KR and ISO-2022-CN are used less frequently than ISO-2022-JP, and are sometimes deliberately not supported due to security concerns.
+	//   Notably, the WHATWG Encoding Standard used by HTML5 maps ISO-2022-KR, ISO-2022-CN and ISO-2022-CN-EXT (as well as HZ-GB-2312) to the "replacement" decoder
+	//     which maps all input to the replacement character (�), in order to prevent certain cross-site scripting and related attacks,
+	//     which utilize a difference in encoding support between the client and server.
+	//   Although the same security concern (allowing sequences of ASCII bytes to be interpreted differently) also applies to ISO-2022-JP and UTF-16,
+	//     they could not be given this treatment due to being much more frequently used in deployed content.
+	//   ```
+	// and in turn GoLang maps through `htmlindex.Get` to a `Replacement` encoder, see
+	//   https://github.com/golang/text/blob/release-branch.go1.15/encoding/htmlindex/tables.go#L306
+	// which replaces whatever codes into a fixed replacement character �, i.e. three bytes [239, 191, 189], see
+	//   https://github.com/golang/text/blob/release-branch.go1.15/encoding/encoding.go#L167
+	// However, it is also suggested to map DICOM `ISO-IR 58` to `GB2312`, see
+	//   http://dicom.nema.org/medical/dicom/current/output/chtml/part05/chapter_K.html
+	// I am no sure if `ISO 2022 IR 58` and `ISO-IR 58` are the same thing, but what else can I do.
+	// If `ISO 2022 IR 58` is mapped to the `replacement` decoder, all metadata following `SpecificCharacterSet` metadata will be parsed to �,
+	//   and if unfortunately some important data, like InstanceNumber, are among the followings, bad things may happen.
+	"ISO 2022 IR 58": "gb2312",
 }
 
 // ParseSpecificCharacterSet converts DICOM character encoding names, such as

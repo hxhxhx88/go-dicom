@@ -139,10 +139,11 @@ func WriteElement(e *dicomio.Encoder, elem *Element) {
 }
 
 type WriteOption struct {
-	SkipVerifyingVR                   bool
-	DefaultMediaStorageSOPClassUID    string
-	DefaultMediaStorageSOPInstanceUID string
-	DefaultTransferSyntaxUID          string
+	SkipVerifyingVR                        bool
+	SkipEncodingElementWithUndefinedLength bool
+	DefaultMediaStorageSOPClassUID         string
+	DefaultMediaStorageSOPInstanceUID      string
+	DefaultTransferSyntaxUID               string
 }
 
 // WriteElement encodes one data element.  Errors are reported through e.Error()
@@ -255,7 +256,11 @@ func WriteElementWithOption(e *dicomio.Encoder, elem *Element, opt WriteOption) 
 		}
 	} else {
 		if elem.UndefinedLength {
-			e.SetErrorf("Encoding undefined-length element not yet supported: %v", elem)
+			if opt.SkipEncodingElementWithUndefinedLength {
+				dicomlog.Vprintf(1, "Encoding undefined-length element not yet supported: %v", elem)
+			} else {
+				e.SetErrorf("Encoding undefined-length element not yet supported: %v", elem)
+			}
 			return
 		}
 		sube := dicomio.NewBytesEncoder(e.TransferSyntax())

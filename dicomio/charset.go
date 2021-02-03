@@ -3,6 +3,7 @@ package dicomio
 import (
 	"fmt"
 
+	"github.com/golang/glog"
 	"github.com/hxhxhx88/go-dicom/dicomlog"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/htmlindex"
@@ -117,7 +118,14 @@ func ParseSpecificCharacterSet(encodingNames []string) (CodingSystem, error) {
 		dicomlog.Vprintf(2, "dicom.ParseSpecificCharacterSet: Using coding system %s", name)
 		if htmlName, ok := htmlEncodingNames[name]; !ok {
 			// TODO(saito) Support more encodings.
-			return CodingSystem{}, fmt.Errorf("dicom.ParseSpecificCharacterSet: Unknown character set '%s'. Assuming utf-8", name)
+			if name == "ISO_IR 6" {
+				// `ISO_IR 6` looks like a meaningless encoding name, but it has been seen in real data.
+				// 		https://dicom.innolitics.com/ciods/cr-image/sop-common/00080005
+				// We ignore it without raising an error.
+				glog.V(2).Infof("ignored ISO_IR 6 encoding")
+			} else {
+				return CodingSystem{}, fmt.Errorf("dicom.ParseSpecificCharacterSet: Unknown character set '%s'. Assuming utf-8", name)
+			}
 		} else {
 			if htmlName != "" {
 				d, err := htmlindex.Get(htmlName)

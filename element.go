@@ -449,7 +449,7 @@ func ReadElement(d *dicomio.Decoder, options ReadOptions) *Element {
 	}
 
 	// Return nil if the tag is greater than the StopAtTag if a StopAtTag is given
-	if options.StopAtTag != nil && tag.Group >= options.StopAtTag.Group && tag.Element >= options.StopAtTag.Element {
+	if options.StopAtTag != nil && tag.Compare(*options.StopAtTag) == 1 {
 		return endOfDataElement
 	}
 	// The elements for group 0xFFFE should be Encoded as Implicit VR.
